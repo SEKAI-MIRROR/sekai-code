@@ -1,0 +1,26 @@
+name: CLI checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --omit=dev
+      - run: npm run check
+      - run: npm test
+      - run: python3 test/tui-pty.py
+      - run: python3 test/subagents-pty.py
+      - run: python3 test/resume-pty.py
+      - run: node cli/main.js --help
+      - run: npm pack --dry-run

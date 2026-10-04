@@ -1,0 +1,42 @@
+/* Sekai Code: a quiet workbench with a mint accent and a compact, squared frame. */
+:root, [data-theme="dark"] {
+ --app-bg: rgb(11, 20, 23); --chat-bg: rgb(16, 27, 30); --frame: none;
+ --composer-bg: rgb(22, 36, 39); --composer-border: rgb(47, 73, 76);
+ --field-bg: var(--composer-bg); --composer-accent-rgb: 57, 201, 173;
+ --composer-on-accent-rgb: 8, 30, 26; --link-rgb: 97, 217, 193;
+ --row-active-bg: rgb(26, 49, 50); --row-active-lift: none; --card-lift: none;
+ --control-hover-bg: rgb(30, 48, 51); --menu-bg: rgb(22, 36, 39);
+ --popover-bg: rgb(22, 36, 39); --selection-rgb: 57, 201, 173;
+ --glass-fill: none; --glass-rim: none; --glass-shade: none; --glass-drop: none;
+ --glass-backdrop: none; --titlebar-symbols: rgb(170, 196, 192);
+}
+[data-theme="light"] {
+ --app-bg: rgb(225, 238, 234); --chat-bg: rgb(249, 252, 251); --frame: none;
+ --composer-bg: rgb(238, 246, 243); --composer-border: rgb(178, 206, 197);
+ --field-bg: var(--composer-bg); --composer-accent-rgb: 17, 116, 94;
+ --composer-on-accent-rgb: 255, 255, 255; --link-rgb: 17, 116, 94;
+ --row-active-bg: rgb(205, 229, 220); --row-active-lift: none; --card-lift: none;
+ --control-hover-bg: rgb(220, 237, 230); --menu-bg: rgb(240, 248, 244);
+ --popover-bg: rgb(240, 248, 244); --selection-rgb: 45, 153, 127;
+ --glass-fill: none; --glass-rim: none; --glass-shade: none; --glass-drop: none;
+ --glass-backdrop: none; --titlebar-symbols: rgb(44, 83, 73);
+}
+body { font-family: ui-sans-serif, system-ui, sans-serif; }
+.app { gap: 0; padding: 0; }
+.sidebar { border-right: 1px solid var(--composer-border); background: var(--app-bg); }
+.main { border-radius: 0; box-shadow: none; }
+.titlebar-name { letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+.titlebar-name .glyph { color: #39c9ad; width: 16px; height: 16px; }
+.composer { border-radius: 8px; border: 1px solid var(--composer-border); box-shadow: none; background: var(--composer-bg); }
+.composer-field, .composer-toolbar { background: transparent; }
+.message { font-size: 15px; }
+.message pre { border: 1px solid var(--composer-border); border-radius: 5px; }
+.settings, .mini-chat, .approval-card { border-radius: 8px; box-shadow: none; }
+.welcome { display: none; width: min(420px, 70%); height: auto; top: 24%; left: 50%; margin: 0; transform: translateX(-50%); text-align: center; opacity: 1; pointer-events: none; }
+.welcome.is-shown { display: block; transform: translateX(-50%); filter: none; }
+.sekai-welcome-mark { width: 64px; height: 64px; margin: 0 auto 22px; }
+.welcome h1 { margin: 0; font-size: 29px; font-weight: 600; letter-spacing: -.04em; }
+.welcome p { margin-top: 12px; opacity: .6; font-size: 14px; }
+/* The workbench opens directly; no inherited splash or decorative CSS motion. */
+*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }
+@media (max-height: 620px) { .welcome.is-shown { display: none; } }
