@@ -1,7 +1,15 @@
 # Sekai CLI
 
-A coding agent for your terminal. Explore a project, edit files, run commands,
-and continue saved conversations with `sekai`.
+A terminal coding agent powered by [Sekai Gateway](https://sekaigateway.xyz/).
+Explore a project, edit files, run commands, and continue saved conversations
+with `sekai`.
+
+Sekai Gateway is the default AI provider for Sekai CLI. The service gives you
+access to models from OpenAI, Anthropic, Google, and DeepSeek through one API,
+with Coding Plans or pay-as-you-go billing in Indonesian rupiah and PAYG top-ups
+via QRIS.
+
+[Website](https://sekaigateway.xyz/) · [Models & pricing](https://sekaigateway.xyz/id/models) · [API documentation](https://sekaigateway.xyz/id/docs)
 
 Requires **Node.js 22.19+** and npm. Runs on Linux, macOS, and Windows.
 
@@ -41,15 +49,20 @@ Add the `export` line to your shell startup file to keep `sekai` on your PATH.
 
 ## Quick start
 
+Create an account at [Sekai Gateway](https://sekaigateway.xyz/id/register),
+choose a Coding Plan or fund your PAYG balance, and create an
+[API key](https://sekaigateway.xyz/id/api-key). Then connect the CLI:
+
 ```sh
 sekai login
 sekai models
 sekai -C /path/to/project
 ```
 
-**Sekai Gateway** is the default provider, using
-`https://api.sekaigateway.xyz/v2`. Login verifies your API key and selects an
-available model. Use `/model` during chat to choose another model.
+The CLI connects to `https://api.sekaigateway.xyz/v2` by default.
+`sekai login` prompts for your Sekai Gateway API key, verifies it, and selects
+an available model. `sekai models` lists the models available to your account;
+use `/model` during chat to choose another model.
 
 For automation, set `SEKAI_API_KEY` or pipe a key into `sekai login --key-stdin`.
 Use `sekai auth status` to check authentication and `sekai logout` to remove the
@@ -147,7 +160,7 @@ Command-line flags override saved defaults. Available providers:
 
 | Provider | Environment variable |
 | --- | --- |
-| Sekai Gateway (default) | `SEKAI_API_KEY` |
+| [Sekai Gateway](https://sekaigateway.xyz/) (default) | `SEKAI_API_KEY` |
 | OpenAI | `OPENAI_API_KEY` |
 | Anthropic | `ANTHROPIC_API_KEY` |
 | DeepSeek | `DEEPSEEK_API_KEY` |

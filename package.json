@@ -2,7 +2,7 @@
   "name": "sekai-code",
   "version": "1.3.0",
   "private": true,
-  "description": "Sekai Code — a terminal coding agent",
+  "description": "A terminal coding agent powered by Sekai Gateway",
   "scripts": {
     "start": "node cli/main.js",
     "cli": "node cli/main.js",
