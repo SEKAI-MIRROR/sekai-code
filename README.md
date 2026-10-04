@@ -9,16 +9,14 @@ Requires **Node.js 22.19+** and npm. Runs on Linux, macOS, and Windows.
 
 ### From a release
 
-Install [GitHub CLI](https://cli.github.com/) and run `gh auth login`.
-Private releases require an account with repository access.
-
-Run this installer in Bash on Linux, macOS, or Git Bash on Windows:
+Install the latest release on Linux, macOS, or Windows (PowerShell):
 
 ```sh
-(tmp="$(mktemp -d)" && trap 'rm -r "$tmp"' EXIT && gh release download --repo SEKAI-MIRROR/sekai-code --pattern sekai-code.tgz --dir "$tmp" && npm install --global --ignore-scripts "$tmp/sekai-code.tgz")
+npm install --global --ignore-scripts https://github.com/SEKAI-MIRROR/sekai-code/releases/latest/download/sekai-code.tgz
 ```
 
-Run it again to update. Packages and checksums are available in
+Then run `sekai --help` or `sekai login`. Run the installer again to update.
+No GitHub account or GitHub CLI is required. Packages and checksums are available in
 [GitHub Releases](https://github.com/SEKAI-MIRROR/sekai-code/releases).
 
 ### From source
