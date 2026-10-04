@@ -2,32 +2,32 @@
 
 ## Project Structure & Module Organization
 
-Sekai Code combines a Node.js CLI and an Electron desktop application.
+Sekai Code is a Node.js terminal coding agent. Active development focuses on the CLI.
 
 - `cli/`: command parsing, authentication, sessions, agent loop, tools, and terminal UI. `cli/main.js` provides the `sekai` command; `cli/tui.mjs` handles interactive rendering.
 - `cli/config.js`: configuration, origin-bound credentials, and persisted sessions. `cli/resume.js` handles session selection and prepares restored conversation settings.
 - `cli/agent.js` coordinates tool execution and approvals; `cli/subagents.js` manages workers sharing the project directory. `cli/terminal.js` provides the plain readline and JSONL interfaces.
 - `cli/pi/`: adapted upstream Pi components, theme, and highlighting utilities. Preserve attribution in `NOTICE`.
-- `desktop/`: Electron main/preload code and provider adapters, including the shared Sekai Gateway adapter in `desktop/sekai.js`.
-- Root JavaScript, HTML, and CSS files implement the desktop renderer. `images/` and `desktop/icon.*` contain assets.
+- `cli/adapters/`: provider transports for Sekai Gateway, OpenAI, and Anthropic. CLI modules must not depend on the desktop archive.
+- `archive/desktop/`: historical Electron application, renderer, assets, and desktop tests, with its own package manifest and lockfile. It is excluded from CLI installation, packaging, and validation.
 - `test/` contains automated tests; `scripts/` contains validation helpers. Generated packages belong in ignored `dist/`.
 
 ## Build, Test, and Development Commands
 
 Use Node.js **22.19 or newer**.
 
-- `npm ci`: install locked dependencies. Use `npm ci --omit=dev` for CLI-only work.
+- `npm ci`: install the CLI's locked dependencies.
 - `npm run cli -- --help`: inspect CLI commands; `npm run cli` opens interactive chat.
 - `npm run cli -- --yolo`: open chat with all tools approved for this invocation.
 - `npm run cli -- resume`: choose a saved conversation; append `latest` or a full session ID to resume directly. Add `--yolo` to resume without tool confirmations.
-- `npm start`: launch the Electron desktop application.
+- `npm start`: open interactive CLI chat; `npm start -- --help` shows commands.
 - `npm run check`: syntax-check JavaScript and ES modules.
 - `npm test`: run the Node.js test suite.
 - `python3 test/tui-pty.py`: exercise startup, approvals, streaming, resize, cancellation, and shell restoration in a pseudo-terminal on Linux/macOS.
 - `python3 test/subagents-pty.py`: verify concurrent workers, serialized approvals, and worker cancellation.
 - `python3 test/resume-pty.py`: verify session selection, restored context, project switching, YOLO, and plain-mode resume.
 - `npm pack --dry-run`: inspect CLI package contents.
-- `npm run dist`, `npm run dist:mac`, `npm run dist:linux`: build desktop packages without publishing.
+- Desktop build commands are available only from `archive/desktop/`; they are outside the active CLI workflow.
 
 ## Coding Style & Naming Conventions
 

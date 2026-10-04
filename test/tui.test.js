@@ -22,6 +22,21 @@ async function fixture(t) {
 const documentLines = (ui, width) => [ui.document, ui.dialog, ui.header, ui.editor, ui.footer].flatMap(c => c.render(width));
 const rendered = (ui, width = 100) => strip(documentLines(ui, width).join('\n'));
 
+test('restoring rejected tool arguments does not crash the TUI', async t => {
+ const { ui, session } = await fixture(t);
+ session.messages = [
+  { role: 'assistant', content: '', tool_calls: [
+   { id: 'null', function: { name: 'list_files', arguments: 'null' } },
+   { id: 'git', function: { name: 'git', arguments: '{"args":"status"}' } },
+  ] },
+  { role: 'tool', tool_call_id: 'null', content: '{"error":"Arguments must be an object."}' },
+  { role: 'tool', tool_call_id: 'git', content: '{"error":"args must be an array."}' },
+ ];
+ ui.restore(session);
+ assert.match(rendered(ui), /Arguments must be an object/);
+ assert.match(rendered(ui), /args must be an array/);
+});
+
 test('welcome stays compact beside the editor, adapts to width, and shows current permissions', async t => {
  const { ui, device, session } = await fixture(t);
  const { visibleWidth } = await import('@earendil-works/pi-tui');

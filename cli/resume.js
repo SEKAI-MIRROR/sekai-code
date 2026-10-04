@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs/promises');
 const Config = require('./config');
-const Gateway = require('../desktop/sekai');
+const Gateway = require('./adapters/sekai');
 const { clean } = require('./terminal');
 
 async function selectSession(terminal) {

@@ -41,6 +41,16 @@ test('external and symlink paths require approval, including dangling symlinks',
  assert.equal(await fs.readFile(path.join(root, 'outside'), 'utf8'), 'secret');
  assert.equal(await target(cwd, 'dangling'), path.join(root, 'new-file'));
 });
+test('auto requires approval for protected directories redirected inside the project', async t => {
+ const { cwd } = await fixture(t);
+ await fs.mkdir(path.join(cwd, 'metadata'));
+ for (const name of ['.git', '.sekai']) {
+  await fs.symlink(path.join(cwd, 'metadata'), path.join(cwd, name));
+  const result = await execute('write_file', { path: `${name}/config`, content: 'changed' }, context(cwd));
+  assert.equal(result.denied, true, name);
+ }
+ assert.deepEqual(await fs.readdir(path.join(cwd, 'metadata')), []);
+});
 test('edits reject ambiguous matches and concurrent changes during approval', async t => {
  const { cwd } = await fixture(t), file = path.join(cwd, 'a');
  await fs.writeFile(file, 'same same');
@@ -57,4 +67,46 @@ test('approved commands report exit codes and abort kills running processes', as
  const pending = command(process.execPath, ['-e', 'setInterval(()=>{},1000)'], cwd, controller.signal);
  setTimeout(() => controller.abort(), 80);
  assert.equal((await pending).cancelled, true);
+});
+
+test('malformed tool arguments are rejected before rendering, approval, or file changes', async t => {
+ const { cwd } = await fixture(t);
+ await fs.writeFile(path.join(cwd, 'a'), 'same same');
+ for (const [name, args] of [
+  ['git', { args: 'status' }],
+  ['git', { args: [1] }],
+  ['edit_file', { path: 'a', old_string: 'same', new_string: 'changed', replace_all: 'false' }],
+  ['read_file', { path: 'a', offset: 1.5 }],
+  ['list_files', { path: null }],
+  ['write_file', { path: 'a', content: 'changed', unexpected: true }],
+ ]) {
+  const events = [];
+  const result = await execute(name, args, { ...context(cwd, 'full'), emit: event => events.push(event) });
+  assert.match(result.error || '', /argument|must be|unsupported/i, name);
+  assert.deepEqual(events, [], name);
+ }
+ assert.equal(await fs.readFile(path.join(cwd, 'a'), 'utf8'), 'same same');
+});
+
+test('write_file does not overwrite a new empty file created during approval', async t => {
+ const { cwd } = await fixture(t);
+ const result = await execute('write_file', { path: 'new', content: 'replacement' }, context(cwd, 'ask', async () => {
+  await fs.writeFile(path.join(cwd, 'new'), ''); return true;
+ }));
+ assert.match(result.error || '', /changed during approval/);
+ assert.equal(await fs.readFile(path.join(cwd, 'new'), 'utf8'), '');
+});
+
+test('fetch_url handles responses without a body and flushes UTF-8 decoding', async t => {
+ const { cwd } = await fixture(t);
+ const original = global.fetch; t.after(() => global.fetch = original);
+ for (const status of [204, 205, 304]) {
+  global.fetch = async () => new Response(null, { status });
+  const result = await execute('fetch_url', { url: 'https://example.test' }, context(cwd, 'full'));
+  assert.equal(result.error, undefined); assert.equal(result.status, status);
+  assert.equal(result.text, ''); assert.equal(result.truncated, false);
+ }
+ global.fetch = async () => new Response(new Uint8Array([0x61, 0xe2, 0x82]));
+ const result = await execute('fetch_url', { url: 'https://example.test' }, context(cwd, 'full'));
+ assert.equal(result.text, 'a\ufffd');
 });

@@ -96,6 +96,8 @@ ${await instructions(session.cwd)}`;
   const pending = calls.map(call => ({ role: 'tool', tool_call_id: call.id, content: 'Action interrupted before a result was recorded. Inspect current state before retrying.' }));
   session.messages.push(...pending);
   await save(session);
+  // A valid JSON prefix is still unsafe to execute when the model was cut off.
+  if (result.finishReason && !['stop', 'end_turn', 'tool_calls', 'tool_use'].includes(result.finishReason)) throw new Error(`Model stopped with ${result.finishReason}; the response may be incomplete. Resume this session to continue.`);
   for (let i = 0; i < calls.length; i++) {
    signal.throwIfAborted();
    const call = calls[i]; let output;

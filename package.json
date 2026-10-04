@@ -1,70 +1,13 @@
 {
   "name": "sekai-code",
-  "productName": "Sekai Code",
   "version": "1.3.0",
   "private": true,
-  "description": "Sekai Code — a terminal coding agent and desktop companion",
-  "main": "desktop/main.js",
+  "description": "Sekai Code — a terminal coding agent",
   "scripts": {
-    "start": "electron .",
-    "shortcut": "electron . --create-shortcut",
-    "dist": "electron-builder --win nsis --publish never",
-    "dist:mac": "electron-builder --mac dmg --universal --publish never",
-    "dist:linux": "electron-builder --linux tar.gz --publish never",
+    "start": "node cli/main.js",
     "cli": "node cli/main.js",
     "test": "node --test test/*.test.js",
     "check": "node scripts/check.js"
-  },
-  "devDependencies": {
-    "electron": "^44.4.5",
-    "electron-builder": "^26.15.3"
-  },
-  "build": {
-    "appId": "com.sekai.code",
-    "productName": "Sekai Code",
-    "icon": "desktop/icon.ico",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "**/*",
-      "!dist/**",
-      "!images/**",
-      "!.github/**",
-      "!**/*.md",
-      "!test/**",
-      "!scripts/**",
-      "!cli/**"
-    ],
-    "asar": true,
-    "win": {
-      "target": "nsis",
-      "icon": "desktop/icon.ico"
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Sekai Code",
-      "artifactName": "Sekai-Code-${version}-Setup.exe",
-      "uninstallDisplayName": "Sekai Code"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "desktop/icon.png",
-      "category": "public.app-category.utilities",
-      "artifactName": "Sekai-Code-${version}-mac.${ext}",
-      "identity": null
-    },
-    "linux": {
-      "target": "tar.gz",
-      "icon": "desktop/icon.png",
-      "category": "Utility",
-      "artifactName": "Sekai-Code-${version}-linux.${ext}",
-      "executableName": "sekai-code"
-    }
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
@@ -79,9 +22,6 @@
   },
   "files": [
     "cli/",
-    "desktop/openai.js",
-    "desktop/anthropic.js",
-    "desktop/sekai.js",
     "README.md",
     "LICENSE",
     "NOTICE"

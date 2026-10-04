@@ -83,12 +83,23 @@ function preview(file, before, after) {
  return shown + (lines.length > 85 || lines.join('\n').length > 10000 ? '\n[Preview truncated]' : '');
 }
 async function execute(name, args, { cwd, mode, signal, approve, emit = () => {} }) {
- if (!schemas.some(t => t.function.name === name)) return { error: `Unknown tool: ${name}` };
+ const schema = schemas.find(t => t.function.name === name)?.function.parameters;
+ if (!schema) return { error: `Unknown tool: ${name}` };
  try {
   signal?.throwIfAborted();
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Arguments must be an object.');
+  for (const key of schema.required) if (!Object.hasOwn(args, key)) throw new Error(`Missing required argument: ${key}`);
+  for (const [key, value] of Object.entries(args)) {
+   const spec = Object.hasOwn(schema.properties, key) && schema.properties[key];
+   if (!spec) throw new Error(`Unsupported argument: ${key}`);
+   const valid = spec.type === 'integer' ? Number.isInteger(value)
+    : spec.type === 'array' ? Array.isArray(value) && value.every(item => typeof item === spec.items.type)
+     : typeof value === spec.type;
+   if (!valid) throw new Error(`Argument ${key} must be ${spec.type === 'array' ? 'an array of strings' : spec.type}.`);
+  }
   const fileTool = ['read_file', 'write_file', 'edit_file', 'list_files'].includes(name);
   const resolved = fileTool ? await target(cwd, name === 'list_files' ? args.path || '.' : args.path) : null;
+  const requested = fileTool ? path.resolve(cwd, name === 'list_files' ? args.path || '.' : args.path) : null;
   let before, after, existed = true;
   if (['write_file', 'edit_file'].includes(name)) {
    let externalPreview = false;
@@ -125,15 +136,17 @@ async function execute(name, args, { cwd, mode, signal, approve, emit = () => {}
   }
   const change = after !== undefined ? preview(args.path, before, after) : null;
   emit({ type: 'tool_start', name, args, ...(change ? { preview: change } : {}) });
-  if (needsApproval(name, mode, cwd, resolved) && !await approve({ name, args, preview: change })) return { denied: true, error: 'User did not approve this action. Do not retry it by another route.' };
+  // Both the named path and its symlink destination must satisfy the policy.
+  const approvalRequired = needsApproval(name, mode, cwd, resolved) || (requested && needsApproval(name, mode, cwd, requested));
+  if (approvalRequired && !await approve({ name, args, preview: change })) return { denied: true, error: 'User did not approve this action. Do not retry it by another route.' };
   signal?.throwIfAborted();
   // Recheck after a potentially long approval prompt; do not write a newly redirected path.
   if (resolved && await target(cwd, name === 'list_files' ? args.path || '.' : args.path) !== resolved) throw new Error('Path changed during approval. Read it again.');
   if (after !== undefined) {
-   const current = await textFile(resolved).catch(error => { if (!existed && error.code === 'ENOENT') return ''; throw error; });
-   if (current !== before) throw new Error('File changed during approval. Read it again before editing.');
+   const current = await textFile(resolved).catch(error => { if (!existed && error.code === 'ENOENT') return null; throw error; });
+   if (existed ? current !== before : current !== null) throw new Error('File changed during approval. Read it again before editing.');
    await fs.mkdir(path.dirname(resolved), { recursive: true });
-   await fs.writeFile(resolved, after, 'utf8');
+   await fs.writeFile(resolved, after, { encoding: 'utf8', flag: existed ? 'w' : 'wx' });
    return { path: resolved, created: !existed, bytes: Buffer.byteLength(after) };
   }
   if (name === 'read_file') {
@@ -166,9 +179,10 @@ async function execute(name, args, { cwd, mode, signal, approve, emit = () => {}
   const url = new URL(args.url);
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) URLs are supported.');
   const response = await fetch(url, { signal: AbortSignal.any([signal || new AbortController().signal, AbortSignal.timeout(30000)]) });
+  if (!response.body) return { status: response.status, url: response.url, text: '', truncated: false };
   const reader = response.body.getReader();
   const decoder = new TextDecoder(); let text = '';
-  try { while (text.length < 60000) { const { value, done } = await reader.read(); if (done) break; text += decoder.decode(value, { stream: true }); } }
+  try { while (text.length < 60000) { const { value, done } = await reader.read(); if (done) { text += decoder.decode(); break; } text += decoder.decode(value, { stream: true }); } }
   finally { await reader.cancel(); }
   return { status: response.status, url: response.url, text: text.slice(0, 60000), truncated: text.length >= 60000 };
  } catch (error) { if (signal?.aborted) throw error; return { error: error.message }; }

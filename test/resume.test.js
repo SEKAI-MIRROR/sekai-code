@@ -5,6 +5,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { selectSession, prepareResume } = require('../cli/resume');
+const Config = require('../cli/config');
 
 async function fixture(t) {
  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sekai-resume-'));
@@ -80,4 +81,27 @@ test('plain picker accepts a number or ID and handles empty sessions', async t =
  terminal.ask = async () => assert.fail('Empty sessions must not prompt');
  terminal.note = text => assert.match(text, /No saved sessions/);
  assert.equal(await selectSession(terminal), null);
+});
+
+test('corrupt session metadata cannot break listing, the picker, or latest', async t => {
+ const { session, save, options, cwd } = await fixture(t);
+ for (const [id, values] of [
+  ['bad-date', { updated: 123 }],
+  ['bad-id', { id: 123 }],
+  ['bad-messages', { messages: null }],
+ ]) {
+  await fs.writeFile(path.join(Config.home(), 'sessions', `${id}.json`), JSON.stringify({ ...session, id, ...values }));
+ }
+ await save({ ...session, id: 'invalid-time', updated: 'not-a-date' });
+ assert.deepEqual((await Config.sessions()).map(s => s.id), ['saved']);
+ assert.equal(await selectSession({ rich: true, select: async (title, items) => items[0].value }), 'saved');
+ assert.equal((await prepareResume('latest', { options, cwd })).session.id, 'saved');
+});
+
+test('resume rejects missing or mismatched session identity before replacing active state', async t => {
+ const { session, options, cwd } = await fixture(t);
+ for (const id of [undefined, '../outside', 'different']) {
+  await fs.writeFile(path.join(Config.home(), 'sessions', 'saved.json'), JSON.stringify({ ...session, id }));
+  await assert.rejects(prepareResume('saved', { options, cwd }), /Invalid saved session/);
+ }
 });

@@ -27,11 +27,12 @@ export class ToolCard {
  invalidate() {}
  finish(result) { this.result = result; }
  render(width) {
-  const { name, args = {}, preview } = this.event;
+  const { name, preview } = this.event;
+  const args = this.event.args && typeof this.event.args === 'object' ? this.event.args : {};
   const r = this.result;
   const failed = r && (r.error || r.denied || r.cancelled || r.timedOut || (r.code != null && r.code !== 0));
   const background = failed ? 'toolErrorBg' : r ? 'toolSuccessBg' : 'toolPendingBg';
-  const detail = clean(args.command || args.path || args.url || args.name || (args.args || []).join(' '));
+  const detail = clean(args.command || args.path || args.url || args.name || (Array.isArray(args.args) ? args.args.join(' ') : args.args || ''));
   const label = ({ read_file: 'read', write_file: 'write', edit_file: 'edit', list_files: 'ls', run_command: 'bash' })[name] || name;
   const title = (this.event.agentName ? ink.dim(`[${clean(this.event.agentName)}] `) : '') + ink.bold(fg('toolTitle')(label)) + (detail ? ' ' + ink.accent(detail) : '');
   let output = preview ? clean(preview) : '';

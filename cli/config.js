@@ -4,7 +4,7 @@ const syncFS = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
-const Gateway = require('../desktop/sekai');
+const Gateway = require('./adapters/sekai');
 const home = () => path.resolve(process.env.SEKAI_HOME || path.join(os.homedir(), '.sekai'));
 const providers = ['sekai', 'openai', 'anthropic', 'deepseek'];
 const modes = ['ask', 'auto', 'full'];
@@ -77,8 +77,15 @@ async function removeCredential(provider) {
  const value = savedCredentials(); delete value[provider];
  await writeJSON(path.join(home(), 'credentials.json'), value);
 }
+const validSessionId = id => typeof id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(id);
+function validSession(session) {
+ return session && validSessionId(session.id) && typeof session.cwd === 'string' && path.isAbsolute(session.cwd)
+  && providers.includes(session.provider) && (session.model === undefined || typeof session.model === 'string')
+  && Array.isArray(session.messages) && session.messages.every(message => message && typeof message.role === 'string')
+  && (session.subagents === undefined || Array.isArray(session.subagents));
+}
 function sessionFile(id) {
- if (!/^[a-zA-Z0-9-]{1,80}$/.test(id)) throw new Error('Invalid session ID.');
+ if (!validSessionId(id)) throw new Error('Invalid session ID.');
  return path.join(home(), 'sessions', `${id}.json`);
 }
 async function sessions({ includeChildren = false } = {}) {
@@ -86,7 +93,10 @@ async function sessions({ includeChildren = false } = {}) {
  const names = await fs.readdir(dir).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
  const out = [];
  for (const name of names.filter(n => n.endsWith('.json'))) {
-  try { const s = await readJSON(path.join(dir, name)); if (s?.id && s.updated && (includeChildren || !s.parentId)) out.push(s); } catch {}
+  try {
+   const s = await readJSON(path.join(dir, name));
+   if (validSession(s) && `${s.id}.json` === name && typeof s.updated === 'string' && Number.isFinite(Date.parse(s.updated)) && (includeChildren || !s.parentId)) out.push(s);
+  } catch {}
  }
  return out.sort((a, b) => b.updated.localeCompare(a.updated));
 }
@@ -94,6 +104,7 @@ async function loadSession(id) {
  if (id === 'latest') { const found = (await sessions())[0]; if (!found) throw new Error('No saved sessions.'); return found; }
  const found = await readJSON(sessionFile(id), null);
  if (!found) throw new Error(`Session not found: ${id}`);
+ if (!validSession(found) || found.id !== id) throw new Error('Invalid saved session.');
  return found;
 }
 async function saveSession(session) { session.updated = new Date().toISOString(); await writeJSON(sessionFile(session.id), session); }

@@ -32,6 +32,25 @@ async function server(t, handler) {
  return `http://127.0.0.1:${s.address().port}`;
 }
 const send = (res, events) => { res.writeHead(200, { 'Content-Type': 'text/event-stream' }); for (const event of events) res.write(`${event.type ? `event: ${event.type}\n` : ""}data: ${JSON.stringify(event)}\n\n`); res.end(); };
+test('truncated OpenAI and DeepSeek responses cannot write files even with valid tool JSON', async t => {
+ for (const provider of ['openai', 'deepseek']) {
+  const { root, env } = await fixture(t, provider);
+  const args = JSON.stringify({ path: 'must-not-exist', content: 'partial response' });
+  let requests = 0;
+  const base = await server(t, (req, res) => {
+   requests++;
+   send(res, provider === 'openai' ? [
+    { type: 'response.output_item.done', item: { type: 'function_call', call_id: 'one', name: 'write_file', arguments: args } },
+    { type: 'response.incomplete', response: { incomplete_details: { reason: 'max_output_tokens' } } },
+   ] : [{ choices: [{ delta: { tool_calls: [{ index: 0, id: 'one', function: { name: 'write_file', arguments: args } }] }, finish_reason: 'length' }] }]);
+  });
+  const result = await cli(['exec', 'Create a file', '-C', root, '-m', 'test', '--base-url', base, '--max-turns', '2', '--yolo', '--json'], env);
+  assert.equal(result.code, 1, result.out + result.err);
+  assert.match(result.out, /response may be incomplete/);
+  assert.equal(requests, 1);
+  await assert.rejects(fs.stat(path.join(root, 'must-not-exist')), { code: 'ENOENT' });
+ }
+});
 test('help/version and invalid options work without credentials or Electron', async t => {
  const { env } = await fixture(t);
  assert.match((await cli(['--help'], env)).out, /Sekai Code/);

@@ -62,3 +62,19 @@ test('cancellation while selecting full does not enable session approval', async
  }), /abort/i);
  assert.equal(options.approval, 'ask');
 });
+
+test('incomplete model responses never execute tools and preserve resumable history', async () => {
+ for (const finishReason of ['length', 'content_filter', 'max_tokens']) {
+  const session = { id: 'test', cwd: os.tmpdir(), messages: [] };
+  let executions = 0, saved;
+  await assert.rejects(run({ session, options: { provider: 'deepseek', approval: 'full', maxTurns: 1, maxAgents: 0 }, prompt: 'test', signal: new AbortController().signal,
+   save: async state => { saved = structuredClone(state); },
+   stream: async () => ({ finishReason, toolCalls: [{ id: 'one', function: { name: 'write_file', arguments: '{"path":"a","content":"partial"}' } }] }),
+   execute: async () => { executions++; return {}; },
+  }), /response may be incomplete/);
+  assert.equal(executions, 0);
+  assert.equal(saved.messages.at(-1).role, 'tool');
+  assert.equal(saved.messages.at(-1).tool_call_id, 'one');
+  assert.match(saved.messages.at(-1).content, /interrupted|not executed/i);
+ }
+});

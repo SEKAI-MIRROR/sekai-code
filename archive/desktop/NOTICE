@@ -10,9 +10,8 @@ status-indicator, syntax-highlight and HTML utilities, plus its dark theme.
 These are derived from upstream commit 200387122ca450d6387f033949423114a270b96c
 and covered by the same MIT license below. Theme wiring and tool presentation
 are adapted to Sekai's provider and approval lifecycle.
-Historical screenshots in archive/desktop/images/ depict the original application
-and are not included in the CLI package. The archived desktop retains its own
-source files and license notices.
+Historical screenshots in images/ depict the original application and are not
+included in the CLI package or desktop build.
 
 Pi source and @earendil-works/pi-tui license:
 

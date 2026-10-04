@@ -1,6 +1,6 @@
 'use strict';
-const OpenAI = require('../desktop/openai');
-const Gateway = require('../desktop/sekai');
+const OpenAI = require('./adapters/openai');
+const Gateway = require('./adapters/sekai');
 const { roots } = require('./config');
 const base = options => (options.baseUrl || roots[options.provider]).replace(/\/+$/, '');
 async function failure(response) {
@@ -15,19 +15,22 @@ async function models(options, key, signal) {
  return ((await response.json()).data || []).map(m => ({ id: m.id, name: m.display_name || m.name || m.id }));
 }
 async function* events(body) {
- let buffer = '';
+ if (!body) throw new Error('Provider returned an empty stream.');
+ let buffer = '', data = [];
  const decoder = new TextDecoder();
+ const decode = () => { const text = data.join('\n').trim(); data = []; return text === '[DONE]' ? { done: true } : text ? JSON.parse(text) : null; };
  for await (const chunk of body) {
   buffer += decoder.decode(chunk, { stream: true });
   let pos;
   while ((pos = buffer.indexOf('\n')) !== -1) {
-   const line = buffer.slice(0, pos).trimEnd(); buffer = buffer.slice(pos + 1);
-   if (!line.startsWith('data:')) continue;
-   const data = line.slice(5).trim();
-   if (data === '[DONE]') { yield { done: true }; return; }
-   if (data) yield JSON.parse(data);
+   const line = buffer.slice(0, pos).replace(/\r$/, ''); buffer = buffer.slice(pos + 1);
+   if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+   else if (!line) { const event = decode(); if (event) { yield event; if (event.done) return; } }
   }
  }
+ buffer += decoder.decode();
+ if (buffer.startsWith('data:')) data.push(buffer.slice(5).trim());
+ const final = decode(); if (final) yield final;
 }
 async function stream(options, key, messages, tools, signal, onEvent, session) {
  const request = { provider: options.provider, key, model: options.model, effort: options.effort, messages, tools, session, maxTokens: 8192 };
@@ -37,7 +40,7 @@ async function stream(options, key, messages, tools, signal, onEvent, session) {
   if (!result.finishReason) throw new Error('Provider stream ended before completion. Please retry.');
   return result;
  }
- if (options.provider === 'anthropic') return require('../desktop/anthropic').stream({ ...request, once: true }, { signal, onEvent, baseURL: base(options) });
+ if (options.provider === 'anthropic') return require('./adapters/anthropic').stream({ ...request, once: true }, { signal, onEvent, baseURL: base(options) });
  const response = await fetch(`${base(options)}/chat/completions`, {
   method: 'POST', signal, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
   body: JSON.stringify({ model: options.model, messages: messages.map(({ native, ...m }) => m), tools, stream: true, stream_options: { include_usage: true }, ...(options.effort ? { thinking: { type: options.effort === 'none' ? 'disabled' : 'enabled' }, reasoning_effort: options.effort } : {}) }),
