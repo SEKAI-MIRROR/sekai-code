@@ -107,4 +107,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" sekai-code.tgz SHA256SUMS \
             --verify-tag --latest --title "Sekai CLI ${GITHUB_REF_NAME#cli-v}" \
-            --notes "Install with Node.js 22.19 or newer: npm install --global --omit=dev --ignore-scripts https://github.com/$GH_REPO/releases/latest/download/sekai-code.tgz"
+            --notes "Requires Node.js 22.19 or newer. One-line installers and private-repository access instructions: https://github.com/$GH_REPO#install-the-cli"

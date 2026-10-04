@@ -8,8 +8,25 @@ Electron or a graphical session.
 
 ## Install the CLI
 
-With **Node.js 22.19 or newer** and npm installed, run this one-line installer
-on Linux, macOS, or Windows (PowerShell):
+Requires **Node.js 22.19 or newer** and npm. This repository is currently private,
+so downloading a release requires a GitHub account with repository access.
+Install [GitHub CLI](https://cli.github.com/) and run `gh auth login` first, then
+use this one-line installer on Linux, macOS, or Git Bash on Windows:
+
+```sh
+(tmp="$(mktemp -d)" && trap 'rm -r "$tmp"' EXIT && gh release download --repo SEKAI-MIRROR/sekai-code --pattern sekai-code.tgz --dir "$tmp" && npm install --global --omit=dev --ignore-scripts "$tmp/sekai-code.tgz")
+```
+
+The installer downloads the latest release using your GitHub login and removes
+the temporary download afterward. If your global npm directory is not writable
+on Linux/macOS, add `--prefix "$HOME/.local"` to the `npm install` command and add
+`export PATH="$HOME/.local/bin:$PATH"` to your shell startup file.
+
+### Direct installer for a public repository
+
+If the repository is made public, this shorter installer works on Linux, macOS,
+and Windows (PowerShell) without a GitHub login. It returns 404 while the
+repository is private:
 
 ```sh
 npm install --global --omit=dev --ignore-scripts https://github.com/SEKAI-MIRROR/sekai-code/releases/latest/download/sekai-code.tgz
