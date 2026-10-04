@@ -1,9 +1,13 @@
-name: CLI checks
+name: CLI build and release
 on:
   push:
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: cli-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,3 +28,83 @@ jobs:
       - run: python3 test/resume-pty.py
       - run: node cli/main.js --help
       - run: npm pack --dry-run
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --omit=dev
+      - name: Check release version
+        if: startsWith(github.ref, 'refs/tags/cli-v')
+        run: |
+          expected="cli-v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "Release tag must match package.json: $expected" >&2
+            exit 1
+          fi
+      - name: Package CLI
+        run: |
+          mkdir -p dist/cli
+          npm pack --ignore-scripts --pack-destination dist/cli
+          mv dist/cli/sekai-code-*.tgz dist/cli/sekai-code.tgz
+          cd dist/cli
+          sha256sum sekai-code.tgz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sekai-cli
+          path: dist/cli/*
+          if-no-files-found: error
+
+  install:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: sekai-cli
+      - name: Install and launch packaged CLI
+        shell: bash
+        env:
+          SEKAI_HOME: ${{ runner.temp }}/sekai-smoke-state
+        run: |
+          npm install --global --omit=dev --ignore-scripts ./sekai-code.tgz
+          sekai --help
+          sekai --version
+          package_root="$(npm root --global)/sekai-code"
+          test ! -d "$package_root/node_modules/electron"
+          node --input-type=module - "$package_root/cli/tui.mjs" <<'NODE'
+          import { pathToFileURL } from 'node:url';
+          await import(pathToFileURL(process.argv[2]).href);
+          console.log('Packaged TUI imports successfully.');
+          NODE
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/cli-v')
+    needs: install
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sekai-cli
+      - name: Publish CLI release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" sekai-code.tgz SHA256SUMS \
+            --verify-tag --latest --title "Sekai CLI ${GITHUB_REF_NAME#cli-v}" \
+            --notes "Install with Node.js 22.19 or newer: npm install --global --omit=dev --ignore-scripts https://github.com/$GH_REPO/releases/latest/download/sekai-code.tgz"

@@ -6,7 +6,34 @@ focused changes, run commands, and review the results from `sekai`.
 Requires **Node.js 22.19 or newer**. The CLI runs on Node directly and does not need
 Electron or a graphical session.
 
-## Install the CLI from this checkout
+## Install the CLI
+
+With **Node.js 22.19 or newer** and npm installed, run this one-line installer
+on Linux, macOS, or Windows (PowerShell):
+
+```sh
+npm install --global --omit=dev --ignore-scripts https://github.com/SEKAI-MIRROR/sekai-code/releases/latest/download/sekai-code.tgz
+```
+
+Then run `sekai --help` or `sekai login`. Run the same installer again to update.
+The package comes from [GitHub Releases](https://github.com/SEKAI-MIRROR/sekai-code/releases)
+and installs only the CLI and its runtime dependencies; Electron is not required.
+npm supports installing packages directly from a
+[tarball URL](https://docs.npmjs.com/cli/v11/commands/npm-install/).
+
+If your global npm directory is not writable, use a user-local install on
+Linux/macOS:
+
+```sh
+npm install --global --prefix "$HOME/.local" --omit=dev --ignore-scripts https://github.com/SEKAI-MIRROR/sekai-code/releases/latest/download/sekai-code.tgz && export PATH="$HOME/.local/bin:$PATH"
+```
+
+Add `export PATH="$HOME/.local/bin:$PATH"` to your shell startup file to keep
+`sekai` available in new terminals. To pin a release, replace `latest/download`
+with `download/cli-v1.3.0` in the URL. Each release includes `SHA256SUMS` for
+verifying a manually downloaded package.
+
+### Install from a checkout
 
 ```sh
 npm ci --omit=dev
@@ -30,7 +57,8 @@ npm run cli -- --help
 ```
 
 The npm package contains the CLI and model adapters, rather than the desktop UI.
-`npm pack` builds an installable local package; nothing is published automatically.
+`npm pack` builds an installable local package. Tagged CLI releases are published
+to GitHub Releases; the package is not published to the npm registry.
 
 ## Connect to Sekai Gateway
 
@@ -282,7 +310,32 @@ npm run check
 npm test
 python3 test/tui-pty.py
 python3 test/subagents-pty.py
+python3 test/resume-pty.py
 ```
+
+### GitHub Actions builds and releases
+
+The [CLI build and release workflow](https://github.com/SEKAI-MIRROR/sekai-code/actions/workflows/cli.yml)
+runs on pushes, pull requests, and manual dispatches. It checks syntax, runs the
+Node.js tests and all three PTY suites on Node.js 22 and 24, then builds the
+`sekai-cli` artifact containing `sekai-code.tgz` and `SHA256SUMS`. The packaged
+CLI is installed and smoke-tested on Linux, macOS, and Windows with both Node.js
+versions, including loading the TUI without Electron.
+
+To publish a CLI release, update `version` in `package.json` and
+`package-lock.json`, commit the changes, and push a matching `cli-v` tag:
+
+```sh
+git tag cli-v1.3.0
+git push origin main cli-v1.3.0
+```
+
+Use a new version/tag for each subsequent release. The tag must match
+`package.json`. After all checks and installation tests pass, the workflow
+publishes a GitHub Release and the one-line installer picks it up automatically.
+Publishing uses the repository's `GITHUB_TOKEN`; no npm token is needed.
+Ordinary branch builds only upload workflow artifacts. Desktop builds remain
+in the separate Build workflow.
 
 The CLI modules separate terminal I/O, the agent loop, tools, configuration, and
 provider transport. Sekai Gateway, OpenAI, and Anthropic share transport adapters
